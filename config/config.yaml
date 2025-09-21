@@ -1,0 +1,139 @@
+# Offline Proxy Configuration
+
+# 代理服务器配置
+proxy:
+  # HTTP代理端口
+  http_port: 8080
+  # HTTPS代理端口
+  https_port: 8443
+  # 绑定地址
+  bind_address: "0.0.0.0"
+  # 工作模式: cache (缓存模式) 或 offline (离线模式)
+  mode: "cache"
+
+# 缓存配置
+cache:
+  # 缓存根目录
+  root_dir: "./data"
+  # 最大缓存大小 (GB)
+  max_size_gb: 50
+  # 缓存过期时间 (天)
+  expire_days: 30
+  # 是否启用压缩
+  compression: true
+  # 压缩算法: gzip, lz4, zstd
+  compression_algorithm: "zstd"
+
+# SSL证书配置
+ssl:
+  # 证书存储目录
+  cert_dir: "./certs"
+  # CA证书有效期 (天)
+  ca_validity_days: 3650
+  # 服务器证书有效期 (天)
+  server_validity_days: 365
+  # 证书组织信息
+  organization: "Offline Proxy"
+  # 国家代码
+  country: "CN"
+
+# 协议支持配置
+protocols:
+  # HTTP/HTTPS支持
+  http:
+    enabled: true
+    # 用户代理字符串
+    user_agent: "OfflineProxy/1.0"
+    # 请求超时 (秒)
+    timeout: 30
+    # 最大重试次数
+    max_retries: 3
+
+  # Git协议支持
+  git:
+    enabled: true
+    # Git服务端口
+    port: 9418
+    # 支持的Git服务
+    services:
+      - "github.com"
+      - "gitlab.com"
+      - "gitee.com"
+      - "bitbucket.org"
+
+  # APT包管理支持
+  apt:
+    enabled: true
+    # APT镜像端口
+    port: 8081
+    # 支持的发行版
+    distributions:
+      - "ubuntu"
+      - "debian"
+    # 支持的架构
+    architectures:
+      - "amd64"
+      - "arm64"
+    # 默认镜像源
+    default_mirrors:
+      ubuntu: "http://archive.ubuntu.com/ubuntu/"
+      debian: "http://deb.debian.org/debian/"
+
+  # Python包管理支持
+  pypi:
+    enabled: true
+    # PyPI镜像端口
+    port: 8082
+    # PyPI索引URL
+    index_url: "https://pypi.org/simple/"
+    # 支持的Python版本
+    python_versions:
+      - "3.8"
+      - "3.9"
+      - "3.10"
+      - "3.11"
+      - "3.12"
+
+# 资源发现配置
+discovery:
+  # 是否启用智能发现
+  enabled: true
+  # 扫描间隔 (小时)
+  scan_interval_hours: 24
+  # 依赖深度
+  dependency_depth: 3
+  # 是否发现传递依赖
+  transitive_dependencies: true
+
+# 日志配置
+logging:
+  # 日志级别: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+  # 日志文件路径
+  file: "./logs/offline_proxy.log"
+  # 日志文件最大大小 (MB)
+  max_file_size_mb: 100
+  # 保留的日志文件数量
+  backup_count: 5
+  # 日志格式
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# 主机配置
+hosts:
+  # hosts文件路径
+  file_path: "/etc/hosts"
+  # 备份文件路径
+  backup_path: "/etc/hosts.offline_proxy_backup"
+  # 自动备份
+  auto_backup: true
+
+# 性能配置
+performance:
+  # 工作线程数
+  worker_threads: 10
+  # 连接池大小
+  connection_pool_size: 100
+  # 缓存预热
+  cache_warmup: false
+  # 内存缓存大小 (MB)
+  memory_cache_mb: 512

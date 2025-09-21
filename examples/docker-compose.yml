@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  offline-proxy:
+    build: .
+    ports:
+      - "8080:8080"    # HTTP代理
+      - "8443:8443"    # HTTPS代理
+      - "8081:8081"    # APT镜像
+      - "8082:8082"    # PyPI镜像
+    volumes:
+      - ./data:/app/data          # 缓存数据
+      - ./logs:/app/logs          # 日志文件
+      - ./certs:/app/certs        # SSL证书
+      - ./config:/app/config      # 配置文件
+    environment:
+      - OFFLINE_PROXY_MODE=cache
+    command: ["offline-proxy", "server", "start", "--host", "0.0.0.0"]
+    
+  # 可选：Redis用于高级缓存
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      
+volumes:
+  redis_data:
