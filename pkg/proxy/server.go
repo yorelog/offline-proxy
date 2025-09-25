@@ -12,12 +12,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/yorelog/offline-proxy/pkg/cache"
 	"github.com/yorelog/offline-proxy/pkg/config"
+	"github.com/yorelog/offline-proxy/pkg/ssl"
 )
 
 // Server represents the main proxy server
 type Server struct {
 	config       *config.Config
 	cacheManager *cache.Manager
+	sslManager   *ssl.Manager
 	httpServer   *http.Server
 	httpsServer  *http.Server
 }
@@ -27,6 +29,7 @@ func NewServer(cfg *config.Config) *Server {
 	return &Server{
 		config:       cfg,
 		cacheManager: cache.NewManager(cfg),
+		sslManager:   ssl.NewManager(cfg),
 	}
 }
 
@@ -37,6 +40,11 @@ func (s *Server) Start() error {
 	// Initialize cache manager
 	if err := s.cacheManager.Initialize(); err != nil {
 		return fmt.Errorf("failed to initialize cache manager: %w", err)
+	}
+
+	// Initialize SSL manager
+	if err := s.sslManager.Initialize(); err != nil {
+		return fmt.Errorf("failed to initialize SSL manager: %w", err)
 	}
 
 	// Setup routes
@@ -60,16 +68,21 @@ func (s *Server) Start() error {
 
 	// Start HTTPS server if configured
 	if s.config.Proxy.HTTPSPort > 0 {
+		tlsConfig, err := s.sslManager.GetServerTLSConfig()
+		if err != nil {
+			return fmt.Errorf("failed to get TLS config: %w", err)
+		}
+
 		s.httpsServer = &http.Server{
 			Addr:         fmt.Sprintf("%s:%d", s.config.Proxy.BindAddress, s.config.Proxy.HTTPSPort),
 			Handler:      router,
 			ReadTimeout:  time.Duration(s.config.Proxy.ReadTimeout) * time.Second,
 			WriteTimeout: time.Duration(s.config.Proxy.WriteTimeout) * time.Second,
+			TLSConfig:    tlsConfig,
 		}
 
 		go func() {
 			log.Printf("HTTPS proxy listening on %s:%d", s.config.Proxy.BindAddress, s.config.Proxy.HTTPSPort)
-			// TODO: Add SSL/TLS configuration
 			if err := s.httpsServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 				log.Printf("HTTPS server error: %v", err)
 			}

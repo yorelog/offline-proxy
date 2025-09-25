@@ -11,7 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yorelog/offline-proxy/pkg/cache"
 	"github.com/yorelog/offline-proxy/pkg/config"
+	"github.com/yorelog/offline-proxy/pkg/protocols/git"
 	"github.com/yorelog/offline-proxy/pkg/proxy"
+	"github.com/yorelog/offline-proxy/pkg/ssl"
 )
 
 var (
@@ -231,10 +233,7 @@ var gitMirrorCmd = &cobra.Command{
 		url := args[0]
 		branch, _ := cmd.Flags().GetString("branch")
 		
-		color.Blue("📦 Mirroring Git repository: %s", url)
-		color.Yellow("ℹ️  Git mirroring not implemented yet")
-		// TODO: Implement Git mirroring
-		_ = branch
+		mirrorGitRepo(cfg, url, branch)
 	},
 }
 
@@ -242,9 +241,7 @@ var gitListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List cached Git repositories",
 	Run: func(cmd *cobra.Command, args []string) {
-		color.Blue("📋 Cached Git repositories:")
-		color.Yellow("ℹ️  Git listing not implemented yet")
-		// TODO: Implement Git listing
+		listGitRepos(cfg)
 	},
 }
 
@@ -252,6 +249,58 @@ func init() {
 	gitMirrorCmd.Flags().String("branch", "main", "Branch to clone")
 	gitCmd.AddCommand(gitMirrorCmd)
 	gitCmd.AddCommand(gitListCmd)
+}
+
+func mirrorGitRepo(cfg *config.Config, url, branch string) {
+	cacheManager := cache.NewManager(cfg)
+	if err := cacheManager.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize cache manager: %v", err)
+	}
+	defer cacheManager.Close()
+	
+	gitHandler := git.NewHandler(cfg, cacheManager)
+	if err := gitHandler.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize Git handler: %v", err)
+	}
+	
+	color.Blue("📦 Mirroring Git repository: %s", url)
+	repoPath, err := gitHandler.CacheRepository(url, branch)
+	if err != nil {
+		color.Red("❌ Failed to mirror repository: %v", err)
+		os.Exit(1)
+	}
+	
+	color.Green("✅ Repository cached at: %s", repoPath)
+}
+
+func listGitRepos(cfg *config.Config) {
+	cacheManager := cache.NewManager(cfg)
+	if err := cacheManager.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize cache manager: %v", err)
+	}
+	defer cacheManager.Close()
+	
+	gitHandler := git.NewHandler(cfg, cacheManager)
+	repositories, err := gitHandler.GetCachedRepositories()
+	if err != nil {
+		log.Fatalf("Failed to list repositories: %v", err)
+	}
+	
+	if len(repositories) == 0 {
+		color.Yellow("ℹ️  No repositories cached")
+		return
+	}
+	
+	color.Blue("📋 Cached Git repositories:")
+	for _, repo := range repositories {
+		sizeMB := float64(repo.SizeBytes) / (1024 * 1024)
+		fmt.Printf("  📁 %s\n", repo.Name)
+		fmt.Printf("     URL: %s\n", repo.URL)
+		fmt.Printf("     Size: %.2f MB\n", sizeMB)
+		fmt.Printf("     Last commit: %s\n", repo.LastCommitDate)
+		fmt.Printf("     Branch: %s\n", repo.Branch)
+		fmt.Println()
+	}
 }
 
 // PyPI commands
@@ -348,9 +397,7 @@ var sslSetupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Setup SSL certificates",
 	Run: func(cmd *cobra.Command, args []string) {
-		color.Blue("🔒 Setting up SSL certificates")
-		color.Yellow("ℹ️  SSL setup not implemented yet")
-		// TODO: Implement SSL setup
+		setupSSL(cfg)
 	},
 }
 
@@ -358,13 +405,32 @@ var sslInstallCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Show commands to install CA certificate",
 	Run: func(cmd *cobra.Command, args []string) {
-		color.Blue("🔧 CA certificate installation commands:")
-		color.Yellow("ℹ️  SSL install not implemented yet")
-		// TODO: Implement SSL install commands
+		showSSLInstallCommands(cfg)
 	},
 }
 
 func init() {
 	sslCmd.AddCommand(sslSetupCmd)
 	sslCmd.AddCommand(sslInstallCmd)
+}
+
+func setupSSL(cfg *config.Config) {
+	sslManager := ssl.NewManager(cfg)
+	if err := sslManager.Initialize(); err != nil {
+		log.Fatalf("Failed to setup SSL: %v", err)
+	}
+	
+	color.Green("🔒 SSL certificates generated successfully")
+	fmt.Printf("   CA certificate: %s/ca.crt\n", cfg.SSL.CertDir)
+	fmt.Printf("   Server certificate: %s/server.crt\n", cfg.SSL.CertDir)
+}
+
+func showSSLInstallCommands(cfg *config.Config) {
+	sslManager := ssl.NewManager(cfg)
+	
+	color.Blue("🔧 Run these commands to install the CA certificate:")
+	commands := sslManager.GetInstallCommands()
+	for _, cmd := range commands {
+		fmt.Println(cmd)
+	}
 }
